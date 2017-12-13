@@ -37,8 +37,10 @@ public final class SlackKit: RTMAdapter {
     internal(set) public var server: SKServer?
     internal(set) public var webAPI: WebAPI?
     internal(set) public var clients: [String: Client] = [:]
-    public var connectionRetryInterval: TimeInterval? = nil
 
+    public typealias ConnectionErrorClosure = (Error) -> Void
+    internal var connectionErrorCallbacks = [ConnectionErrorClosure]()
+    public var connectionRetryInterval: TimeInterval? = nil
 
     public init() {}
 
@@ -99,6 +101,7 @@ public final class SlackKit: RTMAdapter {
     }
 
     public func connectionClosed(with error: Error, instance: SKRTMAPI) {
+        executeConnectionErrorCallbacks(error)
         if let connectionRetryInterval = connectionRetryInterval {
             let retryInterval = Double(UInt64(connectionRetryInterval * Double(UInt64.nanosecondsPerSecond))) / Double(UInt64.nanosecondsPerSecond)
             let delay = DispatchTime.now() + retryInterval
@@ -112,6 +115,7 @@ public final class SlackKit: RTMAdapter {
     }
 
     // MARK: - Callbacks
+
     public func notificationForEvent(_ type: EventType, event: @escaping EventClosure) {
         callbacks.append((type, event))
     }
@@ -120,6 +124,16 @@ public final class SlackKit: RTMAdapter {
         let cbs = callbacks.filter {$0.0 == type}
         for callback in cbs {
             callback.1(event, client)
+        }
+    }
+
+    public func connectionErrorCallback(_ callback: @escaping ConnectionErrorClosure) {
+        connectionErrorCallbacks.append(callback)
+    }
+
+    private func executeConnectionErrorCallbacks(_ error: Error) {
+        for callback in connectionErrorCallbacks {
+            callback(error)
         }
     }
 }
