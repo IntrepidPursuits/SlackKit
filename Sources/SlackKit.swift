@@ -37,6 +37,8 @@ public final class SlackKit: RTMAdapter {
     internal(set) public var server: SKServer?
     internal(set) public var webAPI: WebAPI?
     internal(set) public var clients: [String: Client] = [:]
+    public var connectionRetryInterval: TimeInterval? = nil
+
 
     public init() {}
 
@@ -48,11 +50,13 @@ public final class SlackKit: RTMAdapter {
         _ token: String,
         client: Client? = Client(),
         options: RTMOptions = RTMOptions(),
-        rtm: RTMWebSocket? = nil
+        rtm: RTMWebSocket? = nil,
+        connectionRetryInterval: TimeInterval? = nil
     ) {
         self.rtm = SKRTMAPI(withAPIToken: token, options: options, rtm: rtm)
         self.rtm?.adapter = self
         clients[token] = client
+        self.connectionRetryInterval = connectionRetryInterval
         self.rtm?.connect()
     }
 
@@ -92,6 +96,19 @@ public final class SlackKit: RTMAdapter {
         let client = clients[instance.token]
         client?.notificationForEvent(event, type: type)
         executeCallbackForEvent(event, type: type, client: client)
+    }
+
+    public func connectionClosed(with error: Error, instance: SKRTMAPI) {
+        if let connectionRetryInterval = connectionRetryInterval {
+            let retryInterval = Double(UInt64(connectionRetryInterval * Double(UInt64.nanosecondsPerSecond))) / Double(UInt64.nanosecondsPerSecond)
+            let delay = DispatchTime.now() + retryInterval
+            DispatchQueue.main.asyncAfter(deadline: delay) {
+                guard let rtm = self.rtm, rtm.connected == false else {
+                    return
+                }
+                rtm.connect()
+            }
+        }
     }
 
     // MARK: - Callbacks

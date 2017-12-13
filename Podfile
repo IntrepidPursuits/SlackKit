@@ -5,7 +5,7 @@ target 'SlackKit macOS' do
 	pod 'SKCore'
 	pod 'SKClient'
 	pod 'SKWebAPI'
-	pod 'SKRTMAPI', :git => 'https://github.com/IntrepidPursuits/SKRTMAPI', :branch => 'sbhc'
+	pod 'SKRTMAPI', :git => 'https://github.com/IntrepidPursuits/SKRTMAPI', :branch => 'cprime/reconnect'
 	pod 'SKServer'
 end
 
@@ -14,7 +14,7 @@ target 'SlackKit iOS' do
 	pod 'SKCore'
 	pod 'SKClient'
 	pod 'SKWebAPI'
-	pod 'SKRTMAPI', :git => 'https://github.com/IntrepidPursuits/SKRTMAPI', :branch => 'sbhc'
+	pod 'SKRTMAPI', :git => 'https://github.com/IntrepidPursuits/SKRTMAPI', :branch => 'cprime/reconnect'
 	pod 'SKServer'
 end
 
@@ -23,6 +23,6 @@ target 'SlackKit tvOS' do
 	pod 'SKCore'
 	pod 'SKClient'
 	pod 'SKWebAPI'
-	pod 'SKRTMAPI', :git => 'https://github.com/IntrepidPursuits/SKRTMAPI', :branch => 'sbhc'
+	pod 'SKRTMAPI', :git => 'https://github.com/IntrepidPursuits/SKRTMAPI', :branch => 'cprime/reconnect'
 	pod 'SKServer'
 end
