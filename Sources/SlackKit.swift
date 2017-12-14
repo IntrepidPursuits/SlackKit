@@ -38,6 +38,10 @@ public final class SlackKit: RTMAdapter {
     internal(set) public var webAPI: WebAPI?
     internal(set) public var clients: [String: Client] = [:]
 
+    public typealias ConnectionErrorClosure = (Error) -> Void
+    internal var connectionErrorCallbacks = [ConnectionErrorClosure]()
+    public var connectionRetryInterval: TimeInterval? = nil
+
     public init() {}
 
     public func addWebAPIAccessWithToken(_ token: String) {
@@ -48,11 +52,13 @@ public final class SlackKit: RTMAdapter {
         _ token: String,
         client: Client? = Client(),
         options: RTMOptions = RTMOptions(),
-        rtm: RTMWebSocket? = nil
+        rtm: RTMWebSocket? = nil,
+        connectionRetryInterval: TimeInterval? = nil
     ) {
         self.rtm = SKRTMAPI(withAPIToken: token, options: options, rtm: rtm)
         self.rtm?.adapter = self
         clients[token] = client
+        self.connectionRetryInterval = connectionRetryInterval
         self.rtm?.connect()
     }
 
@@ -94,7 +100,22 @@ public final class SlackKit: RTMAdapter {
         executeCallbackForEvent(event, type: type, client: client)
     }
 
+    public func connectionClosed(with error: Error, instance: SKRTMAPI) {
+        executeConnectionErrorCallbacks(error)
+        if let connectionRetryInterval = connectionRetryInterval {
+            let retryInterval = Double(UInt64(connectionRetryInterval * Double(UInt64.nanosecondsPerSecond))) / Double(UInt64.nanosecondsPerSecond)
+            let delay = DispatchTime.now() + retryInterval
+            DispatchQueue.main.asyncAfter(deadline: delay) {
+                guard let rtm = self.rtm, rtm.connected == false else {
+                    return
+                }
+                rtm.connect()
+            }
+        }
+    }
+
     // MARK: - Callbacks
+
     public func notificationForEvent(_ type: EventType, event: @escaping EventClosure) {
         callbacks.append((type, event))
     }
@@ -103,6 +124,16 @@ public final class SlackKit: RTMAdapter {
         let cbs = callbacks.filter {$0.0 == type}
         for callback in cbs {
             callback.1(event, client)
+        }
+    }
+
+    public func connectionErrorCallback(_ callback: @escaping ConnectionErrorClosure) {
+        connectionErrorCallbacks.append(callback)
+    }
+
+    private func executeConnectionErrorCallbacks(_ error: Error) {
+        for callback in connectionErrorCallbacks {
+            callback(error)
         }
     }
 }
